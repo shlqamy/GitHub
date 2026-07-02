@@ -1,0 +1,150 @@
+
+datasource db {
+  provider = "postgresql"
+  
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EDITOR
+}
+
+enum LeadStage {
+  NEW
+  INTERESTED
+  NEGOTIATING
+  AWAITING_PAYMENT
+  WON
+  REJECTED
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String?
+  name             String
+  role             Role              @default(MANAGER)
+  twoFactorSecret  String?
+  is2FAEnabled     Boolean           @default(false)
+  facebookId       String?           @unique
+  accessToken      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  facebookAccounts FacebookAccount[]
+  customers        Customer[]
+  notifications    Notification[]
+  aiRequests       AIRequest[]
+}
+
+model FacebookAccount {
+  id          String         @id @default(uuid())
+  facebookId  String         @unique
+  name        String
+  accessToken String
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages       FacebookPage[]
+  groups      Group[]
+}
+
+model FacebookPage {
+  id            String          @id @default(uuid())
+  pageId        String          @unique
+  name          String
+  accessToken   String
+  followers     Int             @default(0)
+  accountId     String
+  facebookAccount FacebookAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  posts         Post[]
+}
+
+model Group {
+  id            String          @id @default(uuid())
+  groupId       String          @unique
+  name          String
+  coverUrl      String?
+  category      String?
+  accountId     String
+  facebookAccount FacebookAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id            String         @id @default(uuid())
+  title         String?
+  content       String
+  mediaUrls     String[]
+  status        PostStatus     @default(DRAFT)
+  scheduledAt   DateTime?
+  publishedAt   DateTime?
+  facebookPageId String?
+  facebookPage  FacebookPage?  @relation(fields: [facebookPageId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  commentId  String   @unique
+  content    String
+  postId     String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  aiReplied  Boolean  @default(false)
+  replyText  String?
+  createdAt  DateTime @default(now())
+}
+
+model Customer {
+  id        String    @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  fbUserId  String?   @unique
+  stage     LeadStage @default(NEW)
+  notes     String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  deals     Deal[]
+  createdAt DateTime  @default(now())
+}
+
+model Deal {
+  id         String    @id @default(uuid())
+  title      String
+  value      Float
+  status     String    @default("OPEN")
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+}
+
+model AIRequest {
+  id        String   @id @default(uuid())
+  type      String
+  prompt    String
+  response  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+ 
